@@ -54,7 +54,7 @@ cd node_exporter-1.3.1.linux-amd64
 
 cat > config.yaml <<EOF_END
 global:
-  scrape_interval: 15s
+  scrape_interval: 5s
 
 scrape_configs:
   - job_name: node
