@@ -1,3 +1,6 @@
+#!/bin/bash
+# Define color variables
+
 BLACK=`tput setaf 0`
 RED=`tput setaf 1`
 GREEN=`tput setaf 2`
@@ -20,54 +23,51 @@ BOLD=`tput bold`
 RESET=`tput sgr0`
 #----------------------------------------------------start--------------------------------------------------#
 
-echo "${YELLOW}${BOLD}Starting${RESET}" "${GREEN}${BOLD}Execution${RESET}"
+echo "${BG_MAGENTA}${BOLD}Starting Execution${RESET}"
 
-gcloud config set compute/zone $ZONE
+gcloud beta container clusters create gmp-cluster --num-nodes=1 --zone $ZONE --enable-managed-prometheus
 
-gcloud container clusters create io
+gcloud container clusters get-credentials gmp-cluster --zone=$ZONE
 
-gsutil cp -r gs://spls/gsp021/* .
+kubectl create ns gmp-test
 
-cd orchestrate-with-kubernetes/kubernetes
+kubectl -n gmp-test apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/prometheus-engine/v0.2.3/examples/example-app.yaml
 
-kubectl create deployment nginx --image=nginx:1.10.0
+kubectl -n gmp-test apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/prometheus-engine/v0.2.3/examples/pod-monitoring.yaml
 
-sleep 20
+git clone https://github.com/GoogleCloudPlatform/prometheus && cd prometheus
 
-kubectl expose deployment nginx --port 80 --type LoadBalancer
+git checkout v2.28.1-gmp.4
 
-sleep 20
+wget https://storage.googleapis.com/kochasoft/gsp1026/prometheus
 
-kubectl get services
+export PROJECT_ID=$(gcloud config get-value project)
 
-cd ~/orchestrate-with-kubernetes/kubernetes
+./prometheus \
+  --config.file=documentation/examples/prometheus.yml --export.label.project-id=$PROJECT_ID --export.label.location=$ZONE 
 
-kubectl create -f pods/monolith.yaml
+wget https://github.com/prometheus/node_exporter/releases/download/v1.3.1/node_exporter-1.3.1.linux-amd64.tar.gz
 
-kubectl create secret generic tls-certs --from-file tls/
-kubectl create configmap nginx-proxy-conf --from-file nginx/proxy.conf
-kubectl create -f pods/secure-monolith.yaml
+tar xvfz node_exporter-1.3.1.linux-amd64.tar.gz
 
-kubectl create -f services/monolith.yaml
+cd node_exporter-1.3.1.linux-amd64
 
-gcloud compute firewall-rules create allow-monolith-nodeport \
-  --allow=tcp:31000
+cat > config.yaml <<EOF_END
+global:
+  scrape_interval: 15s
 
-kubectl label pods secure-monolith 'secure=enabled'
-kubectl get pods secure-monolith --show-labels
+scrape_configs:
+  - job_name: node
+    static_configs:
+      - targets: ['localhost:9100']
 
-kubectl create -f deployments/auth.yaml
+EOF_END
 
-kubectl create -f services/auth.yaml
+export PROJECT=$(gcloud config get-value project)
+gsutil mb -p $PROJECT gs://$PROJECT
+gsutil cp config.yaml gs://$PROJECT
+gsutil -m acl set -R -a public-read gs://$PROJECT
 
-kubectl create -f deployments/hello.yaml
-
-kubectl create -f services/hello.yaml
-
-kubectl create configmap nginx-frontend-conf --from-file=nginx/frontend.conf
-kubectl create -f deployments/frontend.yaml
-kubectl create -f services/frontend.yaml
-
-echo "${RED}${BOLD}Congratulations${RESET}" "${WHITE}${BOLD}for${RESET}" "${GREEN}${BOLD}Completing the Lab !!!${RESET}"
+echo "${BG_RED}${BOLD}Congratulations For Completing The Lab !!!${RESET}"
 
 #-----------------------------------------------------end----------------------------------------------------------#
