@@ -24,49 +24,70 @@ echo "${YELLOW}${BOLD}Starting${RESET}" "${GREEN}${BOLD}Execution${RESET}"
 
 gcloud config set compute/zone $ZONE
 
-gcloud container clusters create io
-
-gsutil -m cp -r gs://spls/gsp021/* .
+gsutil -m cp -r gs://spls/gsp053/orchestrate-with-kubernetes .
 
 cd orchestrate-with-kubernetes/kubernetes
 
-kubectl create deployment nginx --image=nginx:1.10.0
+gcloud container clusters create bootcamp \
+  --machine-type e2-small \
+  --num-nodes 1 \
+  --scopes "https://www.googleapis.com/auth/projecthosting,storage-rw"
+
+sed -i 's/image: "kelseyhightower\/auth:2.0.0"/image: "kelseyhightower\/auth:1.0.0"/' deployments/auth.yaml
+
+kubectl create -f deployments/auth.yaml
+
+kubectl get deployments
+
+kubectl get pods
+
+kubectl create -f services/auth.yaml
+
+kubectl create -f deployments/hello.yaml
+
+kubectl create -f services/hello.yaml
+
+kubectl create secret generic tls-certs --from-file tls/
+
+kubectl create configmap nginx-frontend-conf --from-file=nginx/frontend.conf
+
+kubectl create -f deployments/frontend.yaml
+
+kubectl create -f services/frontend.yaml
+
+kubectl get services frontend
 
 sleep 10
 
-kubectl expose deployment nginx --port 80 --type LoadBalancer
+kubectl scale deployment hello --replicas=5
 
-sleep 20
+kubectl get pods | grep hello- | wc -l
 
-kubectl get services
+kubectl scale deployment hello --replicas=3
 
-cd ~/orchestrate-with-kubernetes/kubernetes
+kubectl get pods | grep hello- | wc -l
 
-kubectl apply -f pods/monolith.yaml
+sed -i 's/image: "kelseyhightower\/auth:1.0.0"/image: "kelseyhightower\/auth:2.0.0"/' deployments/hello.yaml
 
-kubectl create secret generic tls-certs --from-file tls/
-kubectl create configmap nginx-proxy-conf --from-file nginx/proxy.conf
-kubectl apply -f pods/secure-monolith.yaml
+kubectl get replicaset
 
-kubectl apply -f services/monolith.yaml
+kubectl rollout history deployment/hello
 
-gcloud compute firewall-rules create allow-monolith-nodeport \
-  --allow=tcp:31000
+kubectl get pods -o jsonpath --template='{range .items[*]}{.metadata.name}{"\t"}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
 
-kubectl label pods secure-monolith 'secure=enabled'
-kubectl get pods secure-monolith --show-labels
+kubectl rollout resume deployment/hello
 
-kubectl apply -f deployments/auth.yaml
+kubectl rollout status deployment/hello
 
-kubectl apply -f services/auth.yaml
+kubectl rollout undo deployment/hello
 
-kubectl apply -f deployments/hello.yaml
+kubectl rollout history deployment/hello
 
-kubectl apply -f services/hello.yaml
+kubectl get pods -o jsonpath --template='{range .items[*]}{.metadata.name}{"\t"}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
 
-kubectl create configmap nginx-frontend-conf --from-file=nginx/frontend.conf
-kubectl apply -f deployments/frontend.yaml
-kubectl apply -f services/frontend.yaml
+kubectl create -f deployments/hello-canary.yaml
+
+kubectl get deployments
 
 echo "${RED}${BOLD}Congratulations${RESET}" "${WHITE}${BOLD}for${RESET}" "${GREEN}${BOLD}Completing the Lab !!!${RESET}"
 
