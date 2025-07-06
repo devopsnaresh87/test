@@ -57,7 +57,7 @@ kubectl apply -f services/frontend.yaml
 
 kubectl get services frontend
 
-#sleep 10
+sleep 5
 
 kubectl scale deployment hello --replicas=5
 
