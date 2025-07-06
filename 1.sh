@@ -26,7 +26,7 @@ gcloud config set compute/zone $ZONE
 
 gcloud container clusters create io
 
-gsutil cp -m gs://spls/gsp021/* .
+gsutil -m cp -r gs://spls/gsp021/* .
 
 cd orchestrate-with-kubernetes/kubernetes
 
