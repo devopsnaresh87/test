@@ -35,29 +35,29 @@ gcloud container clusters create bootcamp \
 
 sed -i 's/image: "kelseyhightower\/auth:2.0.0"/image: "kelseyhightower\/auth:1.0.0"/' deployments/auth.yaml
 
-kubectl create -f deployments/auth.yaml
+kubectl apply -f deployments/auth.yaml
 
 kubectl get deployments
 
 kubectl get pods
 
-kubectl create -f services/auth.yaml
+kubectl apply -f services/auth.yaml
 
-kubectl create -f deployments/hello.yaml
+kubectl apply -f deployments/hello.yaml
 
-kubectl create -f services/hello.yaml
+kubectl apply -f services/hello.yaml
 
 kubectl create secret generic tls-certs --from-file tls/
 
 kubectl create configmap nginx-frontend-conf --from-file=nginx/frontend.conf
 
-kubectl create -f deployments/frontend.yaml
+kubectl apply -f deployments/frontend.yaml
 
-kubectl create -f services/frontend.yaml
+kubectl apply -f services/frontend.yaml
 
 kubectl get services frontend
 
-sleep 10
+#sleep 10
 
 kubectl scale deployment hello --replicas=5
 
@@ -85,7 +85,7 @@ kubectl rollout history deployment/hello
 
 kubectl get pods -o jsonpath --template='{range .items[*]}{.metadata.name}{"\t"}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
 
-kubectl create -f deployments/hello-canary.yaml
+kubectl apply -f deployments/hello-canary.yaml
 
 kubectl get deployments
 
